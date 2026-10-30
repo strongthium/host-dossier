@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Everything of host-dossier that isn't a window: DNS, ownership (RDAP and WHOIS), networks, TLS, ports, mail,
+       blocklists, Cloudflare, the lookup that ties them together and the report made from it. Kept apart from the UI so
+       that the command line and tests/ can run it. -->
+  <PropertyGroup>
+    <RootNamespace>Strongthium.HostDossier</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- DNS queries of any type to any resolver, which .NET itself doesn't do. -->
+    <PackageReference Include="DnsClient" Version="1.8.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The ICANN part of the Public Suffix List (https://publicsuffix.org), MPL 2.0: what a registrable domain is. -->
+    <EmbeddedResource Include="Data\public-suffixes.txt.gz" LogicalName="public-suffixes.txt.gz" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="HostDossier.Tests" />
+  </ItemGroup>
+</Project>

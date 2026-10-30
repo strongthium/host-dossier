@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/HostDossier.Core/HostDossier.Core.csproj" />
+    <Project Path="src/HostDossier.Cli/HostDossier.Cli.csproj" />
+    <Project Path="src/HostDossier/HostDossier.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HostDossier.Tests/HostDossier.Tests.csproj" />
+  </Folder>
+</Solution>

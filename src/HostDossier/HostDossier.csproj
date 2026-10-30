@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- host-dossier: enter a domain or an address, and it finds out who owns it, what's in its DNS, where it runs and on
+       whose network, how its TLS is set up, which ports are open, how its mail works and whether its mail servers are on
+       blocklists. Windows only, in WPF with Windows' own Fluent theme, so the program itself is small. Published as one
+       file for x64 PCs that runs on the .NET 10 Desktop Runtime installed on the PC: build.ps1 and
+       .github/workflows/release.yml make it. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>host-dossier</AssemblyName>
+    <RootNamespace>Strongthium.HostDossier.App</RootNamespace>
+    <ApplicationIcon>Assets\host-dossier.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Program.Main starts the App: it reads the command line first. -->
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+    <!-- WPF0001: the Fluent theme is experimental in .NET 10. -->
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <!-- The runtime isn't inside it: the .NET 10 Desktop Runtime on the PC runs it. -->
+    <SelfContained>false</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- WPF leaves these out of the implicit usings (it has a Path of its own, in Shapes). -->
+    <Using Include="System.IO" />
+    <Using Include="System.Net.Http" />
+  </ItemGroup>
+
+  <!-- A release is the one program: no debug symbols beside it. -->
+  <Target Name="LeaveOut" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.pdb'" />
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup>
+    <Resource Include="Assets\host-dossier.png" />
+    <Resource Include="Assets\host-dossier.ico" />
+    <!-- The countries' flags, 40 pixels high: from Flagpedia (flagcdn.com), public domain. -->
+    <Resource Include="Assets\flags\*.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HostDossier.Core\HostDossier.Core.csproj" />
+  </ItemGroup>
+</Project>

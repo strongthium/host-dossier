@@ -1,0 +1,108 @@
+<UserControl x:Class="Strongthium.HostDossier.App.SettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Every change is saved as it's made, and the next lookup goes by it. -->
+  <StackPanel>
+    <TextBlock Text="Settings" Style="{StaticResource PageTitle}" Margin="0,0,0,14" />
+
+    <TextBlock Text="What a lookup does" Style="{StaticResource Heading}" Margin="0,0,0,8" />
+    <Border Style="{StaticResource Card}" Margin="0,0,0,14">
+      <StackPanel>
+        <CheckBox x:Name="DoRegistration" Content="Registration: RDAP and WHOIS" Margin="0,2" />
+        <CheckBox x:Name="DoDns" Content="Names under the domain: common names and DNS answers" Margin="0,2" />
+        <CheckBox x:Name="DoLogs" Content="Certificate logs: ask crt.sh for names under the domain" Margin="0,2" />
+        <CheckBox x:Name="DoTls" Content="TLS: test protocols, ciphers and certificates" Margin="0,2" />
+        <CheckBox x:Name="DoPorts" Content="Port scan: connect to each port in the list below" Margin="0,2" />
+        <CheckBox x:Name="DoWeb" Content="Web server: fetch the site's front page and its headers" Margin="0,2" />
+        <CheckBox x:Name="DoMail" Content="Mail: MX, SPF, DKIM, DMARC, BIMI, MTA-STS, DANE and connecting to port 25" Margin="0,2" />
+        <CheckBox x:Name="DoBlocklists" Content="Blocklists: check mail addresses against the lists below" Margin="0,2" />
+        <CheckBox x:Name="DoFollow" Content="Follow related domains: name servers, mail hosts, names on certificates" Margin="0,2" />
+        <CheckBox x:Name="DoCdnScan" Content="Also scan the ports of content networks' addresses" Margin="0,2" />
+        <TextBlock Style="{StaticResource Caption}" Margin="0,8,0,0"
+                   Text="Only scan servers you have permission to scan: on some networks an unrequested port scan is against the terms of service, and in some places against the law." />
+      </StackPanel>
+    </Border>
+
+    <TextBlock Text="How far to go" Style="{StaticResource Heading}" Margin="0,0,0,8" />
+    <Border Style="{StaticResource Card}" Margin="0,0,0,14">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="110" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0" VerticalAlignment="Center" TextWrapping="Wrap" Text="Steps to follow related domains" />
+        <TextBox x:Name="Depth" Grid.Row="0" Grid.Column="1" Margin="0,3" />
+        <TextBlock Grid.Row="1" VerticalAlignment="Center" TextWrapping="Wrap" Text="Related domains to look at, at most" />
+        <TextBox x:Name="FollowLimit" Grid.Row="1" Grid.Column="1" Margin="0,3" />
+        <TextBlock Grid.Row="2" VerticalAlignment="Center" TextWrapping="Wrap" Text="Addresses of a name to test TLS on" />
+        <TextBox x:Name="TlsAddresses" Grid.Row="2" Grid.Column="1" Margin="0,3" />
+        <TextBlock Grid.Row="3" VerticalAlignment="Center" TextWrapping="Wrap" Text="Addresses to scan the ports of" />
+        <TextBox x:Name="PortAddresses" Grid.Row="3" Grid.Column="1" Margin="0,3" />
+        <TextBlock Grid.Row="4" VerticalAlignment="Center" TextWrapping="Wrap" Text="Addresses to look at in each network in SPF (bigger networks are sampled)" />
+        <TextBox x:Name="PerNetwork" Grid.Row="4" Grid.Column="1" Margin="0,3" />
+        <TextBlock Grid.Row="5" VerticalAlignment="Center" TextWrapping="Wrap" Text="Mail addresses to check against blocklists, in all" />
+        <TextBox x:Name="Budget" Grid.Row="5" Grid.Column="1" Margin="0,3" />
+      </Grid>
+    </Border>
+
+    <TextBlock Text="Cloudflare" Style="{StaticResource Heading}" Margin="0,0,0,2" />
+    <TextBlock Style="{StaticResource Caption}" Margin="0,0,0,8"
+               Text="With an API token of yours (Zone Read and DNS Read are enough), a lookup of a zone it can see reads the records as they're stored, and shows the real addresses behind Cloudflare. Tokens are encrypted for this Windows user, and go only to api.cloudflare.com." />
+    <Border Style="{StaticResource Card}" Margin="0,0,0,14">
+      <StackPanel>
+        <ItemsControl x:Name="CloudflareList" />
+        <Grid Margin="0,6,0,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="180" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBox x:Name="TokenName" Margin="0,0,8,0" ToolTip="A name for this token" Text="My account" />
+          <PasswordBox x:Name="TokenValue" Grid.Column="1" Margin="0,0,8,0" ToolTip="The API token" />
+          <Button Grid.Column="2" Content="Test and add" Padding="12,5" Click="AddToken_Click" />
+        </Grid>
+        <TextBlock x:Name="TokenStatus" Style="{StaticResource Caption}" Margin="0,6,0,0" />
+      </StackPanel>
+    </Border>
+
+    <TextBlock Text="Blocklists" Style="{StaticResource Heading}" Margin="0,0,0,2" />
+    <TextBlock Style="{StaticResource Caption}" Margin="0,0,0,8"
+               Text="Which DNS blocklists to check. Each is tried on its test addresses first, and left out if it can't be believed. Some refuse public resolvers." />
+    <Border Style="{StaticResource Card}" Margin="0,0,0,14">
+      <StackPanel>
+        <ItemsControl x:Name="ListsPanel" />
+        <Grid Margin="0,8,0,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBox x:Name="NewZone" Margin="0,0,8,0" ToolTip="The list's zone, such as bl.example.org" />
+          <TextBox x:Name="NewZoneName" Grid.Column="1" Margin="0,0,8,0" ToolTip="A name for it" />
+          <Button Grid.Column="2" Content="Add a list" Padding="12,5" Click="AddList_Click" />
+        </Grid>
+      </StackPanel>
+    </Border>
+
+    <TextBlock Text="Ports to scan" Style="{StaticResource Heading}" Margin="0,0,0,8" />
+    <Border Style="{StaticResource Card}" Margin="0,0,0,14">
+      <TextBox x:Name="PortList" TextWrapping="Wrap" AcceptsReturn="True" MinHeight="70" />
+    </Border>
+
+    <TextBlock Text="DKIM selectors to try" Style="{StaticResource Heading}" Margin="0,0,0,8" />
+    <Border Style="{StaticResource Card}" Margin="0,0,0,14">
+      <TextBox x:Name="Selectors" TextWrapping="Wrap" AcceptsReturn="True" MinHeight="70" />
+    </Border>
+
+    <TextBlock Text="DNS servers" Style="{StaticResource Heading}" Margin="0,0,0,2" />
+    <TextBlock Style="{StaticResource Caption}" Margin="0,0,0,8" Text="Addresses of the DNS servers to ask, separated by commas. Public ones by default, so that you see what the rest of the internet sees: they get to know what you look up. Empty means this computer&apos;s own, which is also what blocklists fall back on when they refuse public servers." />
+    <Border Style="{StaticResource Card}" Margin="0,0,0,14">
+      <TextBox x:Name="Resolvers" />
+    </Border>
+
+    <TextBlock Style="{StaticResource Caption}" Text="Registrable domains come from the Public Suffix List (MPL 2.0). Networks and countries come from Team Cymru's IP-to-ASN service. Flags are Flagpedia's." />
+  </StackPanel>
+</UserControl>
