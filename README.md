@@ -11,6 +11,10 @@ whether those are on blocklists. Then it follows the other domains it found alon
 
 It's a program with a window for Windows 10 and 11, and a command line for Windows and Linux.
 
+**In short:** domain and IP lookup, WHOIS and RDAP lookup, DNS records and DNSSEC, SSL/TLS test (protocols, ciphers,
+certificates), port scanner with banner grabbing, ASN, GeoIP country and reverse DNS (rDNS) lookup, SPF, DKIM, DMARC, BIMI
+and VMC, MTA-STS and DANE checks, RBL and DNSBL blacklist checks, and Cloudflare origin IPs.
+
 ![Overview](docs/overview.png)
 
 The pictures are of made-up sample data (`host-dossier --sample`).
