@@ -133,6 +133,8 @@ host-dossier-cli example.com --skip ports --depth 1
 host-dossier-cli example.com --only mail,blocklists --resolver system
 host-dossier-cli example.com --cache     # the kept report if it's under 24 hours old, and keeps the new one
 host-dossier-cli --open report.json      # a saved report as Markdown, or --json
+host-dossier-cli --about                 # who makes this, and whether there's a newer version
+host-dossier-cli --update                # installs the newer version: it asks first, unless --yes is given
 ```
 
 The sample uses only the addresses, AS numbers and names set aside for documentation (`192.0.2.0/24`, `198.51.100.0/24`,
@@ -146,6 +148,14 @@ in some places against the law without permission, and intrusion detection may n
 those you have permission for. **Port scan** in Settings or `--skip ports` turns it off. Addresses on content networks like
 Cloudflare aren't scanned unless you ask, since their ports answer for the network, not the site.
 
+## About and updates
+
+**About** (at the bottom of the side) says who makes `host-dossier`, with links to Strongthium, and asks GitHub whether there's a newer version. If there is, **Update** downloads the release, checks it against the release's `SHA256SUMS`, replaces the program and starts it again. Reports and settings are kept in their own folder, and stay as they are. If the program's folder can't be changed without an administrator, it says so, and **What's new** leads to the release to download by hand. The checksums come with the release, so they catch a damaged download, not a tampered release.
+
+GitHub is asked only when About is opened, again if it's still open an hour later, or when **Check again** is pressed. `api.github.com` sees that the question came from your address, and which program and version asked.
+
+`host-dossier-cli --about` says the same and offers to update when someone is there to answer; `--update` installs the newer version, asking first unless `--yes` is given. The command line is one program and the window another: each updates itself.
+
 ## What's sent where
 
 | To | What |
@@ -158,6 +168,7 @@ Cloudflare aren't scanned unless you ask, since their ports answer for the netwo
 | crt.sh | The domain, for the certificate logs |
 | The blocklists, by DNS | Each mail address |
 | `api.cloudflare.com` | Your token, only if you've given one |
+| `api.github.com` | The question of what the latest version is, only from About, `--about` or `--update` |
 
 The country comes from the registry, for the block as a whole: where it's registered, not necessarily where the machine is. Settings
 and kept reports are in `%LocalAppData%\Strongthium\host-dossier`, and go nowhere from there. Kept reports include the real addresses behind

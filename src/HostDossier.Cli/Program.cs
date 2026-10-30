@@ -14,11 +14,18 @@ const string Usage = """
       --open <file>           look nothing up: read a report saved with --json
       --cache [hours]         use the kept report if it's this recent (default 24), and keep the new one
       --quiet                 say nothing on the way
+      --about                 who makes this, and whether there's a newer version (GitHub is asked)
+      --update                install the newer version, if there is one: it asks first, unless --yes is given
 
     A Cloudflare API token in the environment variable CLOUDFLARE_API_TOKEN is used for zones it can see.
     """;
 
+Updater.Tidy();
+
 string? target = null;
+var about = false;
+var update = false;
+var yes = false;
 var json = false;
 var quiet = false;
 string? output = null;
@@ -37,6 +44,9 @@ for (var i = 0; i < args.Length; i++)
             case "--help" or "-h" or "/?":
                 Console.WriteLine(Usage);
                 return 0;
+            case "--about": about = true; break;
+            case "--update": update = true; break;
+            case "--yes" or "-y": yes = true; break;
             case "--json": json = true; break;
             case "--quiet": quiet = true; break;
             case "--out": output = Next(); break;
@@ -74,6 +84,9 @@ for (var i = 0; i < args.Length; i++)
         return 2;
     }
 }
+
+if (update) return await AboutCommand.UpdateAsync(yes);
+if (about) return await AboutCommand.AboutAsync(yes);
 
 void Write(Dossier report)
 {

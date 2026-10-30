@@ -17,6 +17,7 @@
         <Image x:Name="Logo" Width="30" Height="30" />
         <TextBlock Text="host-dossier" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,0,0" />
       </StackPanel>
+      <RadioButton x:Name="AboutNav" DockPanel.Dock="Bottom" Style="{StaticResource NavItem}" Tag="&#xE946;" Content="About" Checked="About_Checked" />
       <RadioButton x:Name="SettingsNav" DockPanel.Dock="Bottom" Style="{StaticResource NavItem}" Tag="&#xE713;" Content="Settings" Checked="Settings_Checked" />
       <RadioButton x:Name="HistoryNav" DockPanel.Dock="Bottom" Style="{StaticResource NavItem}" Tag="&#xE81C;" Content="History" Checked="History_Checked" />
       <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">

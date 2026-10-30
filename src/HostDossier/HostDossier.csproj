@@ -42,6 +42,7 @@
 
   <ItemGroup>
     <Resource Include="Assets\host-dossier.png" />
+    <Resource Include="Assets\strongthium-banner.jpg" />
     <Resource Include="Assets\host-dossier.ico" />
     <!-- The countries' flags, 40 pixels high: from Flagpedia (flagcdn.com), public domain. -->
     <Resource Include="Assets\flags\*.png" />

@@ -30,6 +30,7 @@ public partial class MainWindow : Window
     private int shownRevision = -1;
     private bool loadingNav;
     private SettingsPage? settingsPage;
+    private AboutPage? aboutPage;
 
     public MainWindow()
     {
@@ -203,6 +204,7 @@ public partial class MainWindow : Window
         settingsPage = null;
         SettingsNav.IsChecked = false;
         HistoryNav.IsChecked = false;
+        AboutNav.IsChecked = false;
         Refresh(force: true);
     }
 
@@ -230,7 +232,7 @@ public partial class MainWindow : Window
         if (ShowingReport) ShowCurrentPage(force);
     }
 
-    private bool ShowingReport => SettingsNav.IsChecked != true && HistoryNav.IsChecked != true;
+    private bool ShowingReport => SettingsNav.IsChecked != true && HistoryNav.IsChecked != true && AboutNav.IsChecked != true;
 
     private void UpdateNav()
     {
@@ -355,6 +357,7 @@ public partial class MainWindow : Window
         if (loadingNav || sender is not RadioButton { Uid: { Length: > 0 } key }) return;
         SettingsNav.IsChecked = false;
         HistoryNav.IsChecked = false;
+        AboutNav.IsChecked = false;
         currentKey = key;
         shownFingerprint = null;
         Scroller.ScrollToTop();
@@ -366,6 +369,14 @@ public partial class MainWindow : Window
         foreach (var child in Nav.Children.OfType<RadioButton>()) child.IsChecked = false;
         settingsPage ??= new SettingsPage(settings, Program.SettingsFile);
         Page.Content = settingsPage;
+        Scroller.ScrollToTop();
+    }
+
+    private void About_Checked(object sender, RoutedEventArgs e)
+    {
+        foreach (var child in Nav.Children.OfType<RadioButton>()) child.IsChecked = false;
+        aboutPage ??= new AboutPage();
+        Page.Content = aboutPage;
         Scroller.ScrollToTop();
     }
 
