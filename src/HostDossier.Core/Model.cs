@@ -73,6 +73,8 @@ public sealed class AddressInfo
     public string? Provider { get; set; }
     public ServiceKind ProviderKind { get; set; }
     public List<string> ReverseNames { get; } = [];
+    /// <summary>Why there are no reverse names when it isn't that the address has none.</summary>
+    public string? ReverseNote { get; set; }
     /// <summary>Whether a reverse name leads back to this address. Null when there's no reverse name.</summary>
     public bool? ForwardConfirmed { get; set; }
     public NetworkOwner? Owner { get; set; }
@@ -170,7 +172,7 @@ public sealed class TlsReport
     public List<string> GradeReasons { get; } = [];
     public List<Finding> Findings { get; } = [];
     /// <summary>The names on the server's certificate that are worth following.</summary>
-    public IEnumerable<string> CertificateNames => Chain.Count > 0 ? Chain[0].Names : [];
+    [System.Text.Json.Serialization.JsonIgnore] public IEnumerable<string> CertificateNames => Chain.Count > 0 ? Chain[0].Names : [];
 }
 
 // ---- Ports ---------------------------------------------------------------------------------------------------------
@@ -246,6 +248,8 @@ public sealed class SpfNode
     public List<SpfNode> Children { get; } = [];
 }
 
+public sealed record NetworkRoute(string Prefix, long Asn, string? AsName, string? Country, string? Provider);
+
 /// <summary>A network SPF lets send mail, where it was found, and which of its addresses were looked at.</summary>
 public sealed class SpfNetwork
 {
@@ -255,7 +259,10 @@ public sealed class SpfNetwork
     /// <summary>False when the term isn't a pass, such as <c>-ip4:</c>: listed in the record but not allowed.</summary>
     public bool Allowed { get; init; }
     public List<string> Checked { get; } = [];
-    public bool Sampled => Checked.Count < AddressCount;
+    [System.Text.Json.Serialization.JsonIgnore] public bool Sampled => Checked.Count < AddressCount;
+    /// <summary>The routed prefixes the network is made of, which between them say the AS and country of all of it.</summary>
+    public List<NetworkRoute> Routes { get; } = [];
+    public bool RoutesComplete { get; set; } = true;
 }
 
 public sealed class SpfReport
@@ -310,7 +317,7 @@ public sealed class DmarcReport
     public List<string> AggregateTo { get; } = [];
     public List<string> FailureTo { get; } = [];
     public List<Finding> Findings { get; } = [];
-    public bool Enforcing => Policy is "quarantine" or "reject" && Percent == 100;
+    [System.Text.Json.Serialization.JsonIgnore] public bool Enforcing => Policy is "quarantine" or "reject" && Percent == 100;
 }
 
 public sealed class BimiReport
@@ -442,7 +449,7 @@ public sealed class Dossier
     public List<Step> Steps { get; } = [];
     public List<Finding> Notes { get; } = [];
     /// <summary>Raised on the task that made the change. Goes up by one each time.</summary>
-    public int Revision { get; private set; }
+    [System.Text.Json.Serialization.JsonIgnore] public int Revision { get; private set; }
 
     [System.Text.Json.Serialization.JsonIgnore]
     public object Sync { get; } = new();

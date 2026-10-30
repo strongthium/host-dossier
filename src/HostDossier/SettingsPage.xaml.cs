@@ -29,18 +29,22 @@ public partial class SettingsPage : UserControl
         FollowLimit.Text = settings.FollowLimit.ToString();
         TlsAddresses.Text = settings.TlsAddresses.ToString();
         PortAddresses.Text = settings.PortScanAddresses.ToString();
-        PerNetwork.Text = settings.AddressesPerNetwork.ToString();
+        WholeNetwork.Text = settings.WholeNetworkUpTo.ToString();
+        SampleSize.Text = settings.SampleSize.ToString();
+        Lookups.Text = settings.MailAddressLookups.ToString();
+        KeepReports.IsChecked = settings.KeepReports;
+        CacheHours.Text = settings.CacheHours.ToString();
         Budget.Text = settings.MailAddressBudget.ToString();
         PortList.Text = settings.PortList;
         Selectors.Text = string.Join(", ", settings.DkimSelectors);
         Resolvers.Text = string.Join(", ", settings.Resolvers);
         loading = false;
 
-        foreach (var box in new[] { DoRegistration, DoDns, DoLogs, DoTls, DoPorts, DoWeb, DoMail, DoBlocklists, DoFollow, DoCdnScan })
+        foreach (var box in new[] { DoRegistration, DoDns, DoLogs, DoTls, DoPorts, DoWeb, DoMail, DoBlocklists, DoFollow, DoCdnScan, KeepReports })
         {
             box.Click += (_, _) => Apply();
         }
-        foreach (var box in new[] { Depth, FollowLimit, TlsAddresses, PortAddresses, PerNetwork, Budget, PortList, Selectors, Resolvers })
+        foreach (var box in new[] { Depth, FollowLimit, TlsAddresses, PortAddresses, WholeNetwork, SampleSize, Lookups, Budget, CacheHours, PortList, Selectors, Resolvers })
         {
             box.LostFocus += (_, _) => Apply();
         }
@@ -65,7 +69,11 @@ public partial class SettingsPage : UserControl
         settings.FollowLimit = Number(FollowLimit, settings.FollowLimit, 0, 500);
         settings.TlsAddresses = Number(TlsAddresses, settings.TlsAddresses, 0, 16);
         settings.PortScanAddresses = Number(PortAddresses, settings.PortScanAddresses, 0, 64);
-        settings.AddressesPerNetwork = Number(PerNetwork, settings.AddressesPerNetwork, 1, 65536);
+        settings.WholeNetworkUpTo = Number(WholeNetwork, settings.WholeNetworkUpTo, 1, 65536);
+        settings.SampleSize = Number(SampleSize, settings.SampleSize, 1, 4096);
+        settings.MailAddressLookups = Number(Lookups, settings.MailAddressLookups, 1, 1000000);
+        settings.KeepReports = KeepReports.IsChecked == true;
+        settings.CacheHours = Number(CacheHours, settings.CacheHours, 0, 87600);
         settings.MailAddressBudget = Number(Budget, settings.MailAddressBudget, 0, 100000);
         settings.PortList = PortList.Text.Trim();
         settings.DkimSelectors = Words(Selectors.Text);

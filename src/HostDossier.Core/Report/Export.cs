@@ -17,9 +17,33 @@ public static class Export
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 
+    /// <summary>The model's lists have no setters, so reading fills the ones each new object already has.</summary>
+    private static readonly JsonSerializerOptions ReadOptions = new(Options)
+    {
+        PreferredObjectCreationHandling = JsonObjectCreationHandling.Populate,
+        PropertyNameCaseInsensitive = true,
+    };
+
     public static string ToJson(Dossier dossier)
     {
         lock (dossier.Sync) return JsonSerializer.Serialize(dossier, Options);
+    }
+
+    /// <summary>Reads back a report saved as JSON. A file that isn't one, whatever it holds, gives an
+    /// <see cref="InvalidDataException"/> with something to tell the person.</summary>
+    public static Dossier FromJson(string json)
+    {
+        try
+        {
+            var dossier = JsonSerializer.Deserialize<Dossier>(json, ReadOptions) ?? throw new InvalidDataException("This file isn't a host-dossier report.");
+            // A report saved in the middle of a lookup isn't still looking.
+            dossier.Finished ??= dossier.Started;
+            return dossier;
+        }
+        catch (Exception exception) when (exception is JsonException or NotSupportedException or FormatException or ArgumentException)
+        {
+            throw new InvalidDataException("This file isn't a host-dossier report saved as JSON.", exception);
+        }
     }
 
     public static string ToMarkdown(Dossier dossier)

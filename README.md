@@ -64,10 +64,15 @@ addresses, into the list of networks allowed to send. Qualifiers carry through, 
 counts the ten-lookup limit and void lookups, and carries on past them to show what the record lists. `ptr`, `exists`
 and macros that depend on the sender have no list to show, and are reported as such.
 
-Every network gets its AS, country and reverse names, and its addresses are checked against the blocklists. A network too big
-to go through (Google's are `/16`s) is looked at through a **sample** spread across it, 8 addresses by default, and the report says
-how many of how many. A mail domain's budget is 150 addresses. Both can be raised in Settings, at the cost of time and of
-queries the lists may object to.
+**The record, resolved** shows this as a tree, term by term, down to **each address** with its service, AS, country with its
+flag, reverse name, and whether it's on a blocklist. An address inside an `include` inside an `include` gets the same as one in the
+record itself. Networks of up to 1,024 addresses are listed whole. A network too big for that (Google's are `/16`s, and IPv6 ones are
+vast) can't be: it gets the AS and country of all of it, by walking the prefixes it's routed as, and reverse names for a **sample**
+of 8 addresses spread across it. The report says how many of how many.
+
+In all, 4,096 addresses get looked up and 400 get checked against the blocklists: the domain's own networks first, then the
+smallest. Reverse lookups get 90 seconds, and an address that ran out of time says so. All of these are in Settings, at the cost of time
+and of queries the lists may object to.
 
 **DKIM** keys can't be listed: the DNS has no way to ask. About 60 common selectors are tried, and Settings can add more. Finding
 none doesn't mean there are none.
@@ -97,6 +102,15 @@ address away: an unproxied record on the same address, the MX record, or SPF.
 Tokens are encrypted for your Windows user (DPAPI), and go only to `api.cloudflare.com`. The command line takes one from the
 environment variable `CLOUDFLARE_API_TOKEN`. Tokens never go in a report, but the real addresses do, and saving such a report asks first.
 
+## History and saved reports
+
+The last report of everything looked up is kept, and **History** lists them. Looking something up again within 24 hours shows the kept
+report straight away, and says how old it is; **Look up again** brings it up to date, as does asking again for what's on the screen.
+A lookup that was stopped isn't kept. Settings change the 24 hours, or stop reports being kept. **Clear the history** deletes them all.
+
+**Save report** writes a file, and **Open** reads one back, with every page as it was and nothing looked up. Save as JSON for that;
+Markdown is for reading and sharing.
+
 ## Using it
 
 Download a zip from [Releases](../../releases/latest), or take a file straight from [`public/`](public), which always holds the
@@ -110,12 +124,15 @@ latest build:
 
 ```
 host-dossier example.com                 # looks it up straight away
+host-dossier --open report.json          # a saved report, nothing looked up
 host-dossier --sample --view mail        # a made-up report; also --theme light or dark
 
 host-dossier-cli example.com             # a Markdown report on the screen
 host-dossier-cli 192.0.2.1 --json --out report.json
 host-dossier-cli example.com --skip ports --depth 1
 host-dossier-cli example.com --only mail,blocklists --resolver system
+host-dossier-cli example.com --cache     # the kept report if it's under 24 hours old, and keeps the new one
+host-dossier-cli --open report.json      # a saved report as Markdown, or --json
 ```
 
 The sample uses only the addresses, AS numbers and names set aside for documentation (`192.0.2.0/24`, `198.51.100.0/24`,
@@ -143,7 +160,8 @@ Cloudflare aren't scanned unless you ask, since their ports answer for the netwo
 | `api.cloudflare.com` | Your token, only if you've given one |
 
 The country comes from the registry, for the block as a whole: where it's registered, not necessarily where the machine is. Settings
-are kept in `%LocalAppData%\Strongthium\host-dossier`. Nothing else is saved unless you save a report.
+and kept reports are in `%LocalAppData%\Strongthium\host-dossier`, and go nowhere from there. Kept reports include the real addresses behind
+Cloudflare, if a token showed them, and never the token.
 
 ## Building
 
@@ -171,7 +189,7 @@ dotnet run --project src/HostDossier.Cli -- example.com --skip ports
 | [`src/HostDossier.Core`](src/HostDossier.Core) | everything that isn't a window: DNS, RDAP and WHOIS, networks, the TLS scanner, the port scanner, the mail checks, blocklists, Cloudflare, the lookup that ties them together, and the report made from it |
 | [`src/HostDossier`](src/HostDossier) | the window (WPF, with its Fluent theme), which draws the report's pages, and the settings |
 | [`src/HostDossier.Cli`](src/HostDossier.Cli) | the command line |
-| [`tests/HostDossier.Tests`](tests/HostDossier.Tests) | tests of the core, which need no network: names and networks, the hello and replies byte by byte, the scanners against servers started on the loopback address, what's read from RDAP, WHOIS, Cloudflare and banners, and the grades |
+| [`tests/HostDossier.Tests`](tests/HostDossier.Tests) | tests of the core, which need no network: names and networks, the hello and replies byte by byte, the scanners against servers started on the loopback address, SPF, blocklists and the whole lookup against a DNS server started the same way, what's read from RDAP, WHOIS, Cloudflare and banners, the grades, and reports read back and kept |
 | [`public`](public) | the latest build, made by `build.ps1` |
 
 `master` holds the source. A push to `deploy` (a merge into it counts) runs

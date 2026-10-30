@@ -21,7 +21,7 @@ public sealed class AddressLookup(Resolver resolver, Rdap rdap)
 
     /// <summary>Fills in a new <see cref="AddressInfo"/>. With <paramref name="withOwner"/> it also asks the regional
     /// registry who the block is assigned to, which is slower and limited, so it's kept for the addresses that matter.</summary>
-    public async Task FillAsync(AddressInfo info, bool withOwner, CancellationToken cancel)
+    public async Task FillAsync(AddressInfo info, bool withOwner, CancellationToken cancel, CancellationToken reverseLimit = default)
     {
         var special = Names.SpecialUse(info.Ip);
         if (special is not null)
@@ -29,18 +29,8 @@ public sealed class AddressLookup(Resolver resolver, Rdap rdap)
             info.Special = special;
             return;
         }
+        // The network first: it's quick, and it's there even when the reverse lookup runs out of time.
         var facts = await FactsAsync(info.Ip, cancel).ConfigureAwait(false);
-        var names = await resolver.ReverseAsync(info.Ip, cancel).ConfigureAwait(false);
-        info.ReverseNames.AddRange(names);
-        if (names.Count > 0)
-        {
-            var confirmed = false;
-            foreach (var name in names.Take(3))
-            {
-                if ((await resolver.AddressesAsync(name, cancel).ConfigureAwait(false)).Contains(info.Ip)) confirmed = true;
-            }
-            info.ForwardConfirmed = confirmed;
-        }
         if (facts is not null)
         {
             info.Asn = facts.Asn;
@@ -55,7 +45,63 @@ public sealed class AddressLookup(Resolver resolver, Rdap rdap)
                 info.ProviderKind = service.Kind;
             }
         }
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(cancel, reverseLimit);
+        try
+        {
+            var (names, failed) = await resolver.ReverseAsync(info.Ip, limit.Token).ConfigureAwait(false);
+            if (failed) info.ReverseNote = "The DNS gave no answer";
+            info.ReverseNames.AddRange(names);
+            if (names.Count > 0)
+            {
+                var confirmed = false;
+                foreach (var name in names.Take(3))
+                {
+                    if ((await resolver.AddressesAsync(name, limit.Token).ConfigureAwait(false)).Contains(info.Ip)) confirmed = true;
+                }
+                info.ForwardConfirmed = confirmed;
+            }
+        }
+        catch (OperationCanceledException) when (!cancel.IsCancellationRequested)
+        {
+            info.ReverseNote = "No answer in time";
+        }
         if (withOwner) await FillOwnerAsync(info, cancel).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Every routed prefix in a network, with its AS and country, by asking about the network's first address, jumping past
+    /// the prefix that answers, and asking again. It takes one question for a network routed as one piece, however big it
+    /// is, and so covers all of its addresses. Stops at <paramref name="maxSteps"/>, and says whether it reached the end.
+    /// </summary>
+    public async Task<(List<NetworkRoute> Routes, bool Complete)> RoutesAsync(string network, CancellationToken cancel, int maxSteps = 64)
+    {
+        var routes = new List<NetworkRoute>();
+        if (!Names.TryGetRange(network, out var first, out var last, out var family)) return (routes, true);
+        // An unrouted gap is crossed at the smallest size that's routed on the internet.
+        var gap = family == AddressFamily.InterNetwork ? (UInt128)256 : UInt128.One << 80;
+        var current = first;
+        for (var step = 0; step < maxSteps; step++)
+        {
+            var ip = Names.AddressAt(current, family);
+            var facts = Names.SpecialUse(ip) is null ? await FactsAsync(ip, cancel).ConfigureAwait(false) : null;
+            UInt128 next;
+            if (facts is not null && Names.TryGetRange(facts.Prefix, out _, out var prefixEnd, out _))
+            {
+                if (!routes.Exists(r => r.Prefix == facts.Prefix))
+                {
+                    routes.Add(new NetworkRoute(facts.Prefix, facts.Asn, await AsNameAsync(facts.Asn, cancel).ConfigureAwait(false), facts.Country, KnownServices.ForNetwork(facts.Asn)?.Name));
+                }
+                if (prefixEnd >= last) return (routes, true);
+                next = prefixEnd + 1;
+            }
+            else
+            {
+                next = current + gap - current % gap;
+                if (next > last || next < current) return (routes, true);
+            }
+            current = next;
+        }
+        return (routes, false);
     }
 
     /// <summary>The block's owner; a block already asked about isn't asked about again.</summary>

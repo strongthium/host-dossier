@@ -9,7 +9,7 @@ namespace Strongthium.HostDossier.Tests;
 /// other types answers with nothing.</summary>
 internal sealed class FakeDns : IDisposable
 {
-    private const ushort A = 1, Mx = 15, Txt = 16, Aaaa = 28;
+    private const ushort A = 1, Ptr = 12, Mx = 15, Txt = 16, Aaaa = 28;
 
     private readonly UdpClient socket = new(new IPEndPoint(IPAddress.Loopback, 0));
     private readonly Dictionary<(string Name, ushort Type), List<byte[]>> table = [];
@@ -35,6 +35,8 @@ internal sealed class FakeDns : IDisposable
     public FakeDns Address4(string name, string ip) => Add(name, A, IPAddress.Parse(ip).GetAddressBytes());
 
     public FakeDns Address6(string name, string ip) => Add(name, Aaaa, IPAddress.Parse(ip).GetAddressBytes());
+
+    public FakeDns Pointer(string name, string host) => Add(name, Ptr, Labels(host));
 
     public FakeDns Mail(string name, int preference, string host)
     {

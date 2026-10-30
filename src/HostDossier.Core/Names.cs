@@ -289,6 +289,21 @@ public static class Names
         return result;
     }
 
+    /// <summary>A network's first and last address, as numbers.</summary>
+    public static bool TryGetRange(string cidr, out UInt128 first, out UInt128 last, out AddressFamily family)
+    {
+        first = last = 0;
+        family = AddressFamily.InterNetwork;
+        if (!TryParseNetwork(cidr, out var network, out var prefix)) return false;
+        family = network.AddressFamily;
+        var hostBits = (family == AddressFamily.InterNetwork ? 32 : 128) - prefix;
+        first = ToNumber(network);
+        last = hostBits >= 128 ? UInt128.MaxValue : first + (UInt128.One << hostBits) - 1;
+        return true;
+    }
+
+    public static string AddressAt(UInt128 number, AddressFamily family) => FromNumber(number, family);
+
     private static UInt128 ToNumber(IPAddress address)
     {
         UInt128 value = 0;

@@ -11,6 +11,8 @@ const string Usage = """
       --ports <list>          the ports to scan: 22,80,8000-8010
       --resolver <address>    the DNS server to ask, again for each one; "system" for this computer's
                               (default: 1.1.1.1 and 8.8.8.8)
+      --open <file>           look nothing up: read a report saved with --json
+      --cache [hours]         use the kept report if it's this recent (default 24), and keep the new one
       --quiet                 say nothing on the way
 
     A Cloudflare API token in the environment variable CLOUDFLARE_API_TOKEN is used for zones it can see.
@@ -20,6 +22,8 @@ string? target = null;
 var json = false;
 var quiet = false;
 string? output = null;
+string? openFile = null;
+int? cacheHours = null;
 var settings = new Settings();
 var ownResolvers = false;
 
@@ -36,6 +40,12 @@ for (var i = 0; i < args.Length; i++)
             case "--json": json = true; break;
             case "--quiet": quiet = true; break;
             case "--out": output = Next(); break;
+            case "--open": openFile = Next(); break;
+            case "--cache":
+                cacheHours = 24;
+                if (i + 1 < args.Length && int.TryParse(args[i + 1], out var hours)) cacheHours = hours;
+                if (i + 1 < args.Length && int.TryParse(args[i + 1], out _)) i++;
+                break;
             case "--depth": settings.FollowDepth = int.Parse(Next(), System.Globalization.CultureInfo.InvariantCulture); break;
             case "--ports": settings.PortList = Next(); break;
             case "--resolver":
@@ -65,6 +75,27 @@ for (var i = 0; i < args.Length; i++)
     }
 }
 
+void Write(Dossier report)
+{
+    var text = json ? Export.ToJson(report) : Export.ToMarkdown(report);
+    if (output is not null) File.WriteAllText(output, text);
+    else Console.Out.WriteLine(text);
+}
+
+if (openFile is not null)
+{
+    try
+    {
+        Write(Export.FromJson(File.ReadAllText(openFile)));
+        return 0;
+    }
+    catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException)
+    {
+        Console.Error.WriteLine(exception.Message);
+        return 1;
+    }
+}
+
 if (target is null)
 {
     Console.Error.WriteLine(Usage);
@@ -89,6 +120,14 @@ Console.CancelKeyPress += (_, stop) =>
     cancel.Cancel();
 };
 
+var cache = new ReportCache(ReportCache.DefaultDirectory);
+if (cacheHours is { } maxHours && cache.Find(parsed.Name, TimeSpan.FromHours(maxHours)) is not null && cache.Load(parsed.Name) is { } kept)
+{
+    if (!quiet) Console.Error.WriteLine($"From the cache: looked up {kept.Finished:yyyy-MM-dd HH:mm} UTC.");
+    Write(kept);
+    return 0;
+}
+
 var dossier = Lookup.Begin(parsed);
 if (!quiet)
 {
@@ -110,9 +149,9 @@ using (var lookup = new Lookup(settings))
     await lookup.RunAsync(dossier, cancel.Token);
 }
 
-var report = json ? Export.ToJson(dossier) : Export.ToMarkdown(dossier);
-if (output is not null) File.WriteAllText(output, report);
-else Console.Out.WriteLine(report);
+// Half a report isn't kept: next time it would pass for the whole of it.
+if (cacheHours is not null && !cancel.IsCancellationRequested) cache.Save(dossier);
+Write(dossier);
 return 0;
 
 static void Turn(Settings settings, Func<string, bool> on)

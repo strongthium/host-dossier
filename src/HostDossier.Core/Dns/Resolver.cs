@@ -120,11 +120,11 @@ public sealed class Resolver
         return addresses.Distinct().ToList();
     }
 
-    public async Task<List<string>> ReverseAsync(string ip, CancellationToken cancel = default)
+    public async Task<(List<string> Names, bool Failed)> ReverseAsync(string ip, CancellationToken cancel = default)
     {
         var zone = IPAddress.Parse(ip).AddressFamily == AddressFamily.InterNetwork ? "in-addr.arpa" : "ip6.arpa";
         var answer = await QueryAsync($"{Names.ReversedLabels(ip)}.{zone}", QueryType.PTR, cancel).ConfigureAwait(false);
-        return answer.Of<PtrRecord>().Select(r => r.PtrDomainName.Value.TrimEnd('.').ToLowerInvariant()).Distinct().ToList();
+        return (answer.Of<PtrRecord>().Select(r => r.PtrDomainName.Value.TrimEnd('.').ToLowerInvariant()).Distinct().ToList(), answer.Outcome == DnsOutcome.Failed);
     }
 
     /// <summary>A name's TXT records, each one's strings joined as the standard says they are.</summary>

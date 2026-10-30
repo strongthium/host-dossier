@@ -44,10 +44,20 @@ public sealed class Settings
     public int TlsAddresses { get; set; } = 2;
     /// <summary>How many addresses get their ports scanned.</summary>
     public int PortScanAddresses { get; set; } = 8;
-    /// <summary>A network in SPF with more addresses than this is looked at through this many, spread across it.</summary>
-    public int AddressesPerNetwork { get; set; } = 8;
-    /// <summary>How many mail addresses in all get a reverse lookup and a check against the blocklists.</summary>
-    public int MailAddressBudget { get; set; } = 150;
+    /// <summary>A network in SPF of up to this many addresses gets every one looked up: AS, country, reverse name.</summary>
+    public int WholeNetworkUpTo { get; set; } = 1024;
+    /// <summary>A bigger network gets reverse names for this many addresses, spread across it. The AS and country of all
+    /// of it come from its routed prefixes.</summary>
+    public int SampleSize { get; set; } = 8;
+    /// <summary>How many SPF addresses in all get a reverse lookup. The domain's own networks go first, then the smallest.</summary>
+    public int MailAddressLookups { get; set; } = 4096;
+    /// <summary>How many of them are checked against the blocklists, which is many queries each.</summary>
+    public int MailAddressBudget { get; set; } = 400;
+
+    /// <summary>Keep the last report of everything looked up, in <see cref="ReportCache.DefaultDirectory"/>.</summary>
+    public bool KeepReports { get; set; } = true;
+    /// <summary>Looking up something with a kept report younger than this shows that report. 0 always looks it up.</summary>
+    public int CacheHours { get; set; } = 24;
     /// <summary>Also scan addresses of a content network, where the ports answer for the network, not the site.</summary>
     public bool ScanCdnAddresses { get; set; }
 

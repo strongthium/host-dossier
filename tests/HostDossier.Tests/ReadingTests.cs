@@ -488,7 +488,7 @@ public class ReadingTests
         }
         var markdown = Export.ToMarkdown(dossier);
         Assert.Contains("## Overview", markdown);
-        Assert.Contains("198.51.100.0/28", markdown);
+        Assert.Contains("198.51.100.6/31", markdown);
         using var json = JsonDocument.Parse(Export.ToJson(dossier));
         Assert.Equal("example.com", json.RootElement.GetProperty("target").GetProperty("name").GetString());
     }

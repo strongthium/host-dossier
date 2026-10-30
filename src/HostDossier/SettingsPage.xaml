@@ -31,7 +31,7 @@
           <ColumnDefinition Width="110" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-          <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <TextBlock Grid.Row="0" VerticalAlignment="Center" TextWrapping="Wrap" Text="Steps to follow related domains" />
         <TextBox x:Name="Depth" Grid.Row="0" Grid.Column="1" Margin="0,3" />
@@ -41,11 +41,32 @@
         <TextBox x:Name="TlsAddresses" Grid.Row="2" Grid.Column="1" Margin="0,3" />
         <TextBlock Grid.Row="3" VerticalAlignment="Center" TextWrapping="Wrap" Text="Addresses to scan the ports of" />
         <TextBox x:Name="PortAddresses" Grid.Row="3" Grid.Column="1" Margin="0,3" />
-        <TextBlock Grid.Row="4" VerticalAlignment="Center" TextWrapping="Wrap" Text="Addresses to look at in each network in SPF (bigger networks are sampled)" />
-        <TextBox x:Name="PerNetwork" Grid.Row="4" Grid.Column="1" Margin="0,3" />
-        <TextBlock Grid.Row="5" VerticalAlignment="Center" TextWrapping="Wrap" Text="Mail addresses to check against blocklists, in all" />
-        <TextBox x:Name="Budget" Grid.Row="5" Grid.Column="1" Margin="0,3" />
+        <TextBlock Grid.Row="4" VerticalAlignment="Center" TextWrapping="Wrap" Text="SPF networks up to this size get every address looked up: AS, country, reverse name" />
+        <TextBox x:Name="WholeNetwork" Grid.Row="4" Grid.Column="1" Margin="0,3" />
+        <TextBlock Grid.Row="5" VerticalAlignment="Center" TextWrapping="Wrap" Text="Addresses to get reverse names for in a bigger network (its AS and country come from its routes)" />
+        <TextBox x:Name="SampleSize" Grid.Row="5" Grid.Column="1" Margin="0,3" />
+        <TextBlock Grid.Row="6" VerticalAlignment="Center" TextWrapping="Wrap" Text="SPF addresses to look up, in all" />
+        <TextBox x:Name="Lookups" Grid.Row="6" Grid.Column="1" Margin="0,3" />
+        <TextBlock Grid.Row="7" VerticalAlignment="Center" TextWrapping="Wrap" Text="SPF addresses to check against blocklists, in all (many queries each)" />
+        <TextBox x:Name="Budget" Grid.Row="7" Grid.Column="1" Margin="0,3" />
       </Grid>
+    </Border>
+
+    <TextBlock Text="History and cache" Style="{StaticResource Heading}" Margin="0,0,0,2" />
+    <TextBlock Style="{StaticResource Caption}" Margin="0,0,0,8"
+               Text="The last report of each lookup is kept on this computer, including the real addresses behind Cloudflare if a token showed them. Tokens never are." />
+    <Border Style="{StaticResource Card}" Margin="0,0,0,14">
+      <StackPanel>
+        <CheckBox x:Name="KeepReports" Content="Keep reports" Margin="0,2" />
+        <Grid Margin="0,4,0,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="110" />
+          </Grid.ColumnDefinitions>
+          <TextBlock VerticalAlignment="Center" TextWrapping="Wrap" Text="Show a kept report rather than looking up again for this many hours (0 always looks up)" />
+          <TextBox x:Name="CacheHours" Grid.Column="1" />
+        </Grid>
+      </StackPanel>
     </Border>
 
     <TextBlock Text="Cloudflare" Style="{StaticResource Heading}" Margin="0,0,0,2" />

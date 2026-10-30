@@ -43,7 +43,7 @@ public static class SampleData
             new DnsRow("example.com", "AAAA", 300, "2001:db8:10::10"),
             new DnsRow("example.com", "MX", 3600, "10 mail.example.com"),
             new DnsRow("example.com", "MX", 3600, "20 mx2.example.net"),
-            new DnsRow("example.com", "TXT", 3600, "v=spf1 ip4:203.0.113.25 ip4:198.51.100.0/28 include:_spf.example.net -all"),
+            new DnsRow("example.com", "TXT", 3600, "v=spf1 ip4:203.0.113.25 ip4:198.51.100.6/31 include:_spf.example.net -all"),
             new DnsRow("example.com", "CAA", 3600, "0 issue \"ca.example.org\""),
             new DnsRow("example.com", "HTTPS", 300, "1 . alpn=h2,h3"),
         ]);
@@ -59,8 +59,10 @@ public static class SampleData
         Address(dossier, "203.0.113.10", 64496, "EXAMPLE-EDGE", "203.0.113.0/24", "CA", "Example Hosting", ServiceKind.Hosting, ["web1.example.net"], "A/AAAA of example.com");
         Address(dossier, "2001:db8:10::10", 64496, "EXAMPLE-EDGE", "2001:db8:10::/48", "CA", "Example Hosting", ServiceKind.Hosting, ["web1.example.net"], "A/AAAA of example.com");
         Address(dossier, "203.0.113.25", 64496, "EXAMPLE-EDGE", "203.0.113.0/24", "CA", "Example Hosting", ServiceKind.Hosting, ["mail.example.com"], "Mail host mail.example.com");
-        Address(dossier, "198.51.100.7", 64500, "EXAMPLE-MAIL", "198.51.100.0/24", "DE", "Example Mail Relay", ServiceKind.Mail, ["relay7.example.net"], "SPF 198.51.100.0/28");
-        Address(dossier, "198.51.100.8", 64500, "EXAMPLE-MAIL", "198.51.100.0/24", "DE", "Example Mail Relay", ServiceKind.Mail, ["relay8.example.net"], "SPF 198.51.100.0/28");
+        Address(dossier, "198.51.100.7", 64500, "EXAMPLE-MAIL", "198.51.100.0/24", "DE", "Example Mail Relay", ServiceKind.Mail, ["relay7.example.net"], "SPF 198.51.100.6/31");
+        Address(dossier, "198.51.100.6", 64500, "EXAMPLE-MAIL", "198.51.100.0/24", "DE", "Example Mail Relay", ServiceKind.Mail, ["relay6.example.net"], "SPF 198.51.100.6/31");
+        Address(dossier, "2001:db8:25::1", 64500, "EXAMPLE-MAIL", "2001:db8:25::/48", "DE", "Example Mail Relay", ServiceKind.Mail, ["relay-v6.example.net"], "SPF 2001:db8:25::/48");
+        Address(dossier, "2001:db8:25:8000::1", 64500, "EXAMPLE-MAIL", "2001:db8:25::/48", "DE", "Example Mail Relay", ServiceKind.Mail, [], "SPF 2001:db8:25::/48");
         Address(dossier, "192.0.2.53", 64511, "EXAMPLE-DNS", "192.0.2.0/24", "NL", "Example DNS", ServiceKind.Dns, ["ns1.example.net"], "Name server ns1.example.net");
         Address(dossier, "192.0.2.80", 64505, "EXAMPLE-ORIGIN", "192.0.2.0/24", "FR", "Example Metal", ServiceKind.Hosting, ["origin.example.org"], "Real address of example.com (behind Cloudflare)");
         Address(dossier, "203.0.113.40", 64496, "EXAMPLE-EDGE", "203.0.113.0/24", "CA", "Example Hosting", ServiceKind.Hosting, [], "A/AAAA of api.example.com");
@@ -135,13 +137,13 @@ public static class SampleData
         mx2.Addresses.Add("198.51.100.7");
         mail.Mx.AddRange([mx, mx2]);
 
-        var spf = new SpfReport { Domain = "example.com", Record = "v=spf1 ip4:203.0.113.25 ip4:198.51.100.0/28 include:_spf.example.net -all", DnsLookups = 2, AllTerm = "-all" };
+        var spf = new SpfReport { Domain = "example.com", Record = "v=spf1 ip4:203.0.113.25 ip4:198.51.100.6/31 include:_spf.example.net -all", DnsLookups = 2, AllTerm = "-all" };
         spf.Services.Add("Example Mail Relay");
         var root = new SpfNode { Term = "v=spf1 at example.com", Mechanism = "record", Domain = "example.com" };
         var ip = new SpfNode { Term = "ip4:203.0.113.25", Mechanism = "ip4" };
         ip.Networks.Add("203.0.113.25");
-        var block = new SpfNode { Term = "ip4:198.51.100.0/28", Mechanism = "ip4" };
-        block.Networks.Add("198.51.100.0/28");
+        var block = new SpfNode { Term = "ip4:198.51.100.6/31", Mechanism = "ip4" };
+        block.Networks.Add("198.51.100.6/31");
         var include = new SpfNode { Term = "include:_spf.example.net", Mechanism = "include", Domain = "_spf.example.net", DnsLookups = 1, Note = "Example Mail Relay" };
         var inner = new SpfNode { Term = "ip6:2001:db8:25::/48", Mechanism = "ip6" };
         inner.Networks.Add("2001:db8:25::/48");
@@ -150,9 +152,12 @@ public static class SampleData
         spf.Root = root;
         var one = new SpfNetwork { Network = "203.0.113.25", Source = "example.com › ip4:203.0.113.25", AddressCount = 1, Allowed = true };
         one.Checked.Add("203.0.113.25");
-        var many = new SpfNetwork { Network = "198.51.100.0/28", Source = "example.com › ip4:198.51.100.0/28", AddressCount = 16, Allowed = true };
-        many.Checked.AddRange(["198.51.100.7", "198.51.100.8"]);
+        var many = new SpfNetwork { Network = "198.51.100.6/31", Source = "example.com › ip4:198.51.100.6/31", AddressCount = 2, Allowed = true };
+        many.Checked.AddRange(["198.51.100.6", "198.51.100.7"]);
+        many.Routes.Add(new NetworkRoute("198.51.100.0/24", 64500, "EXAMPLE-MAIL", "DE", "Example Mail Relay"));
         var six = new SpfNetwork { Network = "2001:db8:25::/48", Source = "example.com › include:_spf.example.net › ip6:2001:db8:25::/48", AddressCount = Math.Pow(2, 80), Allowed = true };
+        six.Checked.AddRange(["2001:db8:25::1", "2001:db8:25:8000::1"]);
+        six.Routes.Add(new NetworkRoute("2001:db8:25::/48", 64500, "EXAMPLE-MAIL", "DE", "Example Mail Relay"));
         spf.Networks.AddRange([one, many, six]);
         spf.Findings.Add(new Finding(Level.Good, "SPF", "The record ends in \"-all\": mail from anywhere else fails."));
         spf.Findings.Add(new Finding(Level.Info, "SPF", "It takes 2 of the 10 DNS lookups allowed."));
@@ -203,7 +208,7 @@ public static class SampleData
         ]);
         lists.Results["203.0.113.25"] = [new BlocklistResult("bl.example.org", BlocklistStatus.Listed, "127.0.0.2", "Listed for sending spam"), new BlocklistResult("dnsbl.example.net", BlocklistStatus.Clean, null, null)];
         lists.Results["198.51.100.7"] = [new BlocklistResult("bl.example.org", BlocklistStatus.Clean, null, null), new BlocklistResult("dnsbl.example.net", BlocklistStatus.Clean, null, null)];
-        lists.Results["198.51.100.8"] = [new BlocklistResult("bl.example.org", BlocklistStatus.Clean, null, null), new BlocklistResult("dnsbl.example.net", BlocklistStatus.Clean, null, null)];
+        lists.Results["198.51.100.6"] = [new BlocklistResult("bl.example.org", BlocklistStatus.Clean, null, null), new BlocklistResult("dnsbl.example.net", BlocklistStatus.Clean, null, null)];
         lists.Findings.Add(new Finding(Level.Warning, "Listing", "203.0.113.25 is on bl.example.org: Listed for sending spam."));
         lists.Findings.Add(new Finding(Level.Info, "Blocklists", "1 of 3 lists couldn't be used and are left out: Old Example List."));
 

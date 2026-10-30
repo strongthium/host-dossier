@@ -31,7 +31,6 @@ public sealed class Lookup : IDisposable
     private List<BlocklistEntry> usableLists = [];
     private Task? blocklistHealth;
     private readonly HashSet<string> blocklistChecked = [];
-    private int mailBudget;
     private readonly System.Diagnostics.Stopwatch blocklistClock = new();
     /// <summary>Domains to take a short look at, with the reason and how far from the target.</summary>
     private readonly ConcurrentDictionary<string, RelatedDomain> related = new();
@@ -56,7 +55,6 @@ public sealed class Lookup : IDisposable
         addressLookup = new AddressLookup(resolver, rdap);
         collector = new DnsCollector(resolver, http);
         blocklists = new BlocklistCheck(settings.Resolvers.Count > 0 ? [resolver, new Resolver([])] : [resolver]);
-        mailBudget = settings.MailAddressBudget;
     }
 
     public void Dispose()
@@ -265,7 +263,7 @@ public sealed class Lookup : IDisposable
     // ---- Addresses -----------------------------------------------------------------------------------------------------
 
     /// <summary>An address's facts, looked up once however many things lead to it; each adds the role it found it in.</summary>
-    private async Task<AddressInfo> AddressAsync(string ip, string role, bool withOwner)
+    private async Task<AddressInfo> AddressAsync(string ip, string role, bool withOwner, CancellationToken reverseLimit = default)
     {
         var info = await addresses.GetOrAdd(ip, key => new Lazy<Task<AddressInfo>>(async () =>
         {
@@ -273,7 +271,7 @@ public sealed class Lookup : IDisposable
             await addressGate.WaitAsync(cancel).ConfigureAwait(false);
             try
             {
-                await addressLookup.FillAsync(created, withOwner: false, cancel).ConfigureAwait(false);
+                await addressLookup.FillAsync(created, withOwner: false, cancel, reverseLimit).ConfigureAwait(false);
             }
             finally
             {
@@ -529,27 +527,56 @@ public sealed class Lookup : IDisposable
         dossier.Change(() => mx.Tlsa.AddRange(rows));
     }
 
-    /// <summary>Each network in SPF: its addresses (a sample of a big one) get their AS, country and reverse name, and
-    /// are checked against the blocklists, within the budget.</summary>
+    /// <summary>How long reverse lookups of SPF's addresses may take in all. A network whose reverse DNS doesn't answer
+    /// could otherwise hold up a lookup for minutes: its addresses still get their AS and country, and say why they have
+    /// no reverse name.</summary>
+    private static readonly TimeSpan SpfReverseTime = TimeSpan.FromSeconds(90);
+
+    /// <summary>
+    /// Every address SPF allows gets its AS, country and reverse name. A network too big for that (up to 1,024 addresses by default is
+    /// not) has its routed prefixes walked, which gives the AS and country of all of it, and reverse names for a sample.
+    /// The domain's own networks go first and then the smallest, so that what a limit leaves out is a sample of someone big.
+    /// </summary>
     private async Task SpfAddressesAsync(MailReport mail, SpfReport spf)
     {
-        var allowed = spf.Networks.Where(n => n.Allowed).ToList();
+        var left = settings.MailAddressLookups;
         var work = new List<(SpfNetwork Network, List<string> Addresses)>();
-        foreach (var network in allowed)
+        foreach (var network in spf.Networks.OrderBy(n => n.Source.Contains("include:", StringComparison.Ordinal)).ThenBy(n => n.AddressCount))
         {
-            var sample = Names.SampleAddresses(network.Network, Math.Max(1, settings.AddressesPerNetwork));
-            var take = Math.Min(sample.Count, Interlocked.Add(ref mailBudget, 0));
-            if (take <= 0) take = 1;
-            Interlocked.Add(ref mailBudget, -take);
-            work.Add((network, sample.Take(take).ToList()));
+            var whole = network.AddressCount <= settings.WholeNetworkUpTo && network.AddressCount <= left;
+            var list = Names.SampleAddresses(network.Network, whole ? (int)network.AddressCount : left > 0 ? Math.Max(1, settings.SampleSize) : 1);
+            left -= list.Count;
+            work.Add((network, list));
         }
         dossier.Change(() =>
         {
             foreach (var (network, list) in work) network.Checked.AddRange(list);
         });
+
+        var routes = Task.WhenAll(work.Where(w => w.Network.AddressCount > 1).Select(async w =>
+        {
+            var (found, complete) = await addressLookup.RoutesAsync(w.Network.Network, cancel).ConfigureAwait(false);
+            dossier.Change(() =>
+            {
+                w.Network.Routes.AddRange(found);
+                w.Network.RoutesComplete = complete;
+            });
+        }));
+        using var reverseLimit = new CancellationTokenSource(SpfReverseTime);
         var everyAddress = work.SelectMany(w => w.Addresses.Select(a => (Address: a, w.Network))).ToList();
-        await Task.WhenAll(everyAddress.Select(p => AddressAsync(p.Address, $"SPF {p.Network.Network}", withOwner: false))).ConfigureAwait(false);
-        if (settings.Blocklists) await CheckBlocklistsAsync(everyAddress.Select(p => p.Address).Distinct().ToList()).ConfigureAwait(false);
+        await Task.WhenAll(everyAddress.Select(p => AddressAsync(p.Address, $"SPF {p.Network.Network}", withOwner: false, reverseLimit.Token))).ConfigureAwait(false);
+        await routes.ConfigureAwait(false);
+
+        if (settings.Blocklists)
+        {
+            var allowed = work.Where(w => w.Network.Allowed).SelectMany(w => w.Addresses).Distinct().ToList();
+            if (allowed.Count > settings.MailAddressBudget)
+            {
+                var skipped = allowed.Count - settings.MailAddressBudget;
+                dossier.Change(() => dossier.Blocklists.Findings.Add(new Finding(Level.Info, "Blocklists", $"{skipped} of {allowed.Count} SPF addresses weren't checked against the blocklists: the limit is {settings.MailAddressBudget}, and Settings can raise it.")));
+            }
+            await CheckBlocklistsAsync(allowed.Take(settings.MailAddressBudget).ToList()).ConfigureAwait(false);
+        }
 
         // Which services the networks come to.
         var names = dossier.Read(() => everyAddress.Select(p => dossier.Addresses.GetValueOrDefault(p.Address)?.Provider).OfType<string>().Distinct().ToList());

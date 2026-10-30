@@ -18,6 +18,7 @@
         <TextBlock Text="host-dossier" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,0,0" />
       </StackPanel>
       <RadioButton x:Name="SettingsNav" DockPanel.Dock="Bottom" Style="{StaticResource NavItem}" Tag="&#xE713;" Content="Settings" Checked="Settings_Checked" />
+      <RadioButton x:Name="HistoryNav" DockPanel.Dock="Bottom" Style="{StaticResource NavItem}" Tag="&#xE81C;" Content="History" Checked="History_Checked" />
       <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
         <StackPanel x:Name="Nav" />
       </ScrollViewer>
@@ -32,6 +33,12 @@
               <Button x:Name="BackButton" DockPanel.Dock="Left" Margin="0,0,8,0" Padding="9,6" IsEnabled="False" ToolTip="Back to the last report" Click="Back_Click">
                 <TextBlock Text="&#xE72B;" Style="{StaticResource Icon}" FontSize="14" />
               </Button>
+              <Button x:Name="OpenButton" DockPanel.Dock="Right" Margin="8,0,0,0" Padding="12,6" ToolTip="Open a report saved as JSON" Click="Open_Click">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="&#xE8E5;" Style="{StaticResource Icon}" FontSize="14" Margin="0,0,8,0" />
+                  <TextBlock Text="Open" />
+                </StackPanel>
+              </Button>
               <Button x:Name="ExportButton" DockPanel.Dock="Right" Margin="8,0,0,0" Padding="12,6" IsEnabled="False" Click="Export_Click">
                 <StackPanel Orientation="Horizontal">
                   <TextBlock Text="&#xE74E;" Style="{StaticResource Icon}" FontSize="14" Margin="0,0,8,0" />
@@ -42,12 +49,13 @@
               <TextBox x:Name="Query" FontSize="15" KeyDown="Query_KeyDown" VerticalContentAlignment="Center" ToolTip="A domain or an IP address" />
             </DockPanel>
             <DockPanel Margin="2,8,0,0">
+              <Button x:Name="AgainButton" DockPanel.Dock="Right" Content="Look up again" Padding="10,2" FontSize="12" Margin="12,0,0,0" Visibility="Collapsed" Click="Again_Click" />
               <ProgressBar x:Name="Busy" DockPanel.Dock="Left" Width="120" Height="3" IsIndeterminate="True" Visibility="Collapsed" Margin="0,0,12,0" VerticalAlignment="Center" />
               <TextBlock x:Name="Status" Style="{StaticResource Caption}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" Text="Enter a domain or an IP address." />
             </DockPanel>
           </StackPanel>
         </Border>
-        <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+        <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False" PreviewMouseWheel="Scroller_PreviewMouseWheel">
           <ContentControl x:Name="Page" Focusable="False" IsTabStop="False" Margin="24,16,24,28" />
         </ScrollViewer>
       </DockPanel>

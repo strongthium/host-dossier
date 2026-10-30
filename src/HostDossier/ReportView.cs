@@ -13,7 +13,7 @@ namespace Strongthium.HostDossier.App;
 /// but which raw texts were left open.</summary>
 internal static class ReportView
 {
-    private const int RowsAtFirst = 200;
+    private const int RowsAtFirst = 500;
     private static readonly FontFamily Mono = new("Cascadia Mono, Consolas");
     private static readonly Dictionary<string, BitmapImage?> Flags = new(StringComparer.Ordinal);
 

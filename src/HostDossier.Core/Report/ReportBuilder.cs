@@ -296,7 +296,7 @@ public static class ReportBuilder
             blocks.Add(AddressTable(members));
         }
         var spfOnly = all.Count(a => a.Roles.TrueForAll(r => r.StartsWith("SPF ", StringComparison.Ordinal)));
-        if (spfOnly > 0) blocks.Add(new NoteBlock($"The {spfOnly} addresses that only come from SPF are on the Mail page, under their networks."));
+        if (spfOnly > 0) blocks.Add(new NoteBlock($"The {spfOnly} addresses that only come from SPF are on the Mail page, in the SPF record."));
         if (blocks.Count == 0) blocks.Add(new NoteBlock(dossier.Finished is null ? "Looking…" : "No addresses were found."));
         return new ReportPage("addresses", "Addresses", IconAddresses, null, all.Count > 0 ? all.Count.ToString(CultureInfo.InvariantCulture) : null, blocks);
     }
@@ -535,32 +535,73 @@ public static class ReportBuilder
         if (spf.Services.Count > 0) facts.Add(("Comes to", string.Join(", ", spf.Services)));
         blocks.Add(new FactsBlock(facts));
 
-        // The record as a tree: each term, and what it came to.
+        // The record as a tree: each term, what it comes to, and down to every address with who it is.
         var tree = new List<IReadOnlyList<Cell>>();
+        var shown = new HashSet<string>(StringComparer.Ordinal);
+        void AddNetwork(string text, int depth)
+        {
+            var network = spf.Networks.Find(n => n.Network == text);
+            if (network is null) return;
+            var label = new Cell(text) { Indent = depth, Mono = true };
+            if (!shown.Add(text))
+            {
+                tree.Add([label, "", "Listed above", "", "", "", "", ""]);
+                return;
+            }
+            if (network.AddressCount == 1)
+            {
+                tree.Add([label with { Lookup = text }, "", "", .. AddressCells(dossier, text)]);
+                return;
+            }
+            var count = network.AddressCount.ToString(network.AddressCount < 1e9 ? "N0" : "0.##e+0", CultureInfo.InvariantCulture);
+            var size = network.Sampled ? $"{count} addresses, {network.Checked.Count} looked at" : $"{count} addresses";
+            var whole = network.Routes.Count == 1 ? network.Routes[0] : null;
+            tree.Add([label, "", size, whole?.Provider ?? whole?.AsName, whole is null ? "" : $"AS{whole.Asn}", Cell.Place(whole?.Country), "", ""]);
+            if (network.Routes.Count > 1)
+            {
+                foreach (var route in network.Routes)
+                {
+                    tree.Add([new Cell(route.Prefix) { Indent = depth + 1, Mono = true }, "", "Routed part", route.Provider ?? route.AsName, $"AS{route.Asn}", Cell.Place(route.Country), "", ""]);
+                }
+            }
+            if (!network.RoutesComplete) tree.Add([new Cell("…") { Indent = depth + 1 }, "", "More routed parts than were followed", "", "", "", "", ""]);
+            foreach (var ip in network.Checked)
+            {
+                tree.Add([new Cell(ip) { Indent = depth + 1, Mono = true, Lookup = ip }, "", "", .. AddressCells(dossier, ip)]);
+            }
+        }
         void Walk(SpfNode node, int depth)
         {
             foreach (var child in node.Children)
             {
-                var result = child.Error is { } error ? Cell.Status(Level.Bad, error)
-                    : child.Networks.Count > 0 ? Cell.Code(string.Join(", ", child.Networks.Take(6)) + (child.Networks.Count > 6 ? $" and {child.Networks.Count - 6} more" : ""))
-                    : (Cell)child.Note;
-                tree.Add([new Cell(child.Term) { Indent = depth, Mono = true, Lookup = child.Mechanism is "include" or "redirect" or "a" or "mx" ? child.Domain : null }, QualifierText(child), result]);
+                var term = new Cell(child.Term) { Indent = depth, Mono = true, Lookup = child.Mechanism is "include" or "redirect" or "a" or "mx" ? child.Domain : null };
+                // An ip4: of one address is that address: a line for each would only say it twice.
+                if (child.Mechanism is "ip4" or "ip6" && child.Error is null && child.Networks.Count == 1 && !child.Networks[0].Contains('/') && shown.Add(child.Networks[0]))
+                {
+                    tree.Add([term with { Lookup = child.Networks[0] }, QualifierText(child), "", .. AddressCells(dossier, child.Networks[0])]);
+                }
+                else
+                {
+                    Cell result = child.Error is { } error ? Cell.Status(Level.Bad, error) : child.Networks.Count > 0 ? "" : child.Note;
+                    tree.Add([term, QualifierText(child), result, "", "", "", "", ""]);
+                    foreach (var network in child.Networks) AddNetwork(network, depth + 1);
+                }
                 Walk(child, depth + 1);
             }
         }
         if (spf.Root is not null) Walk(spf.Root, 0);
-        blocks.Add(new HeadingBlock("The record, resolved", $"{spf.DnsLookups} DNS lookups"));
-        blocks.Add(new TableBlock(["Term", "If it matches", "Comes to"], tree));
+        blocks.Add(new HeadingBlock("The record, resolved", $"{spf.DnsLookups} DNS lookups. Term by term, down to each address and who it is. Small networks are listed whole; for a big one, each routed part, and a sample of addresses spread across it"));
+        blocks.Add(new TableBlock(["Term or address", "If it matches", "Comes to", "Service", "AS", "Country", "Reverse name", "Blocklists"], tree));
 
         // Every network, with who it is.
-        blocks.Add(new HeadingBlock("Networks allowed to send", "Every network the record comes to, with who holds it. Big networks are looked at through a sample of addresses, spread across them"));
+        blocks.Add(new HeadingBlock("Networks allowed to send", "Every network the record comes to, each once, with who holds it"));
         var rows = new List<IReadOnlyList<Cell>>();
         foreach (var network in spf.Networks.OrderBy(n => n.Allowed ? 0 : 1).ThenBy(n => n.Network.Contains(':') ? 1 : 0))
         {
             var infos = network.Checked.Select(ip => dossier.Addresses.GetValueOrDefault(ip)).OfType<AddressInfo>().ToList();
             var first = infos.FirstOrDefault(i => i.Asn is not null) ?? infos.FirstOrDefault();
-            var ases = infos.Where(i => i.Asn is not null).Select(i => $"AS{i.Asn}").Distinct().ToList();
-            var countries = infos.Select(i => i.Country).OfType<string>().Distinct().ToList();
+            var ases = network.Routes.Select(r => $"AS{r.Asn}").Concat(infos.Where(i => i.Asn is not null).Select(i => $"AS{i.Asn}")).Distinct().ToList();
+            var countries = network.Routes.Select(r => r.Country).Concat(infos.Select(i => i.Country)).OfType<string>().Distinct().ToList();
             var reverse = infos.SelectMany(i => i.ReverseNames).Distinct().ToList();
             var hits = network.Checked.Count(ip => dossier.Blocklists.Results.GetValueOrDefault(ip)?.Exists(r => r.Status == BlocklistStatus.Listed) == true);
             var checkedCount = network.Checked.Count(ip => dossier.Blocklists.Results.ContainsKey(ip));
@@ -579,7 +620,26 @@ public static class ReportBuilder
         blocks.Add(new TableBlock(["Network", "Addresses", "Service", "AS", "Country", "Reverse names", "Blocklists", "Looked at", "From"], rows, "The record allows no networks."));
     }
 
-    private static string QualifierText(SpfNode node) => node.Mechanism is "exp" or "redirect" or "include" && node.Mechanism != "include" ? "" : node.Qualifier switch
+    /// <summary>Who an address is: its service, AS, country, reverse name and whether it's on a blocklist.</summary>
+    private static Cell[] AddressCells(Dossier dossier, string ip)
+    {
+        if (dossier.Addresses.GetValueOrDefault(ip) is not { } info) return ["", "", "", dossier.Finished is null ? "Looking…" : "", ""];
+        Cell reverse = info.ReverseNames.Count > 0
+            ? new Cell(string.Join(", ", info.ReverseNames.Take(2)) + (info.ForwardConfirmed == false ? " (doesn't lead back)" : "")) { Lookup = info.ReverseNames[0], Mono = true }
+            : info.ReverseNote ?? (info.Special is null ? "None" : "");
+        // Blank would look like nothing to report: only some addresses fit the limit on blocklist checks.
+        Cell lists = dossier.Finished is not null && dossier.Blocklists.Lists.Count > 0 ? "Not checked" : "";
+        if (dossier.Blocklists.Results.GetValueOrDefault(ip) is { } results)
+        {
+            var hits = results.Where(r => r.Status == BlocklistStatus.Listed).ToList();
+            lists = hits.Count > 0
+                ? Cell.Status(hits.TrueForAll(h => h.Policy) ? Level.Info : Level.Warning, string.Join(", ", hits.Select(h => h.Zone)))
+                : Cell.Status(Level.Good, "Clean");
+        }
+        return [info.Special ?? info.Provider ?? info.AsName, info.Asn is { } asn ? $"AS{asn}" : "", Cell.Place(info.Country), reverse, lists];
+    }
+
+    private static string QualifierText(SpfNode node) =>node.Mechanism is "exp" or "redirect" or "include" && node.Mechanism != "include" ? "" : node.Qualifier switch
     {
         SpfQualifier.Pass => "Pass",
         SpfQualifier.Fail => "Fail",
