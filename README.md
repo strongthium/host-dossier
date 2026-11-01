@@ -184,7 +184,7 @@ You need Windows and the [.NET 10 SDK](https://dotnet.microsoft.com/download).
 
 ```
 .\build.ps1                 # tests, then the programs into public\  (or double-click build.cmd)
-.\build.ps1 -Bump patch     # the same as a new version: 1.0.0 -> 1.0.1
+.\build.ps1 -Bump revision  # the same as a new version: 1.0.0.0 -> 1.0.0.1
 ```
 
 `build.ps1` runs the tests (`-SkipTests` skips them), publishes the programs, and replaces what's in [`public/`](public) with them,

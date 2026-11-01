@@ -31,7 +31,7 @@ internal static class AboutCommand
 
     public static async Task<int> AboutAsync(bool yes)
     {
-        Console.WriteLine($"Strongthium Host Dossier {Updater.RunningVersion.ToString(3)}, the command line");
+        Console.WriteLine($"Strongthium Host Dossier {Updater.RunningVersion.ToString(4)}, the command line");
         Console.WriteLine("Free and open source, under the MIT license: https://github.com/strongthium/host-dossier");
         Console.WriteLine();
         Console.WriteLine(Text);
@@ -50,14 +50,14 @@ internal static class AboutCommand
         {
             Console.WriteLine("Asking GitHub for the latest version...");
             var release = await updater.LatestAsync();
-            var latest = release.Version.ToString(3);
+            var latest = release.Version.ToString(4);
             if (release.Version <= Updater.RunningVersion)
             {
                 Console.WriteLine(release.Version == Updater.RunningVersion ? "You have the latest version." : $"This is newer than the latest release, {latest}.");
                 return 0;
             }
 
-            Console.WriteLine($"Version {latest} is out. You have {Updater.RunningVersion.ToString(3)}. What's new: {release.Page}");
+            Console.WriteLine($"Version {latest} is out. You have {Updater.RunningVersion.ToString(4)}. What's new: {release.Page}");
             if (!yes)
             {
                 if (Console.IsInputRedirected)
