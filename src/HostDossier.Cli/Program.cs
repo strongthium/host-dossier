@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Strongthium.HostDossier;
 
 const string Usage = """
@@ -19,6 +20,20 @@ const string Usage = """
 
     A Cloudflare API token in the environment variable CLOUDFLARE_API_TOKEN is used for zones it can see.
     """;
+
+// Without an OpenSSL it can use, .NET doesn't throw at the first TLS connection: it stops the whole program, so this is
+// asked before anything else.
+if (OperatingSystem.IsLinux() && !(Environment.GetEnvironmentVariable("CLR_OPENSSL_VERSION_OVERRIDE") is { Length: > 0 }
+    || new[] { "libssl.so.3", "libssl.so.1.1" }.Any(name => NativeLibrary.TryLoad(name, out _))))
+{
+    Console.Error.WriteLine("""
+        This needs OpenSSL 3 (libssl.so.3), which .NET uses for TLS, and it isn't installed.
+        Fedora 45 and later come with OpenSSL 4, which .NET can't use yet. Install OpenSSL 3 beside it:
+          sudo dnf install openssl3-libs
+        Fedora's own .NET (sudo dnf install dotnet-runtime-10.0) brings it with it.
+        """);
+    return 1;
+}
 
 Updater.Tidy();
 

@@ -126,6 +126,10 @@ latest build:
 | `host-dossier-cli-win-x64-needs-dotnet.exe` | the command line, for Windows: the .NET 10 Runtime |
 | `host-dossier-cli-linux-x64-needs-dotnet` | the command line, for Linux: the .NET 10 Runtime |
 
+On Linux, .NET needs OpenSSL 3. Fedora 45 and later come with OpenSSL 4, which .NET can't use yet: Fedora's own .NET
+(`sudo dnf install dotnet-runtime-10.0`) brings OpenSSL 3 with it, and with any other .NET, install it yourself with
+`sudo dnf install openssl3-libs`. Without it, the command line says so and stops.
+
 ```
 host-dossier example.com                 # looks it up straight away
 host-dossier --open report.json          # a saved report, nothing looked up
