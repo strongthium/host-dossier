@@ -234,10 +234,14 @@ public class ReportTests
         .Text("example.com", "v=spf1 ip4:5.5.5.5 include:_a.example.net include:_big.example.net -all")
         .Text("_a.example.net", "v=spf1 ip4:6.6.6.6 ip4:7.7.7.0/30 -ip4:9.9.9.9 -all")
         .Text("_big.example.net", "v=spf1 ip4:5.6.0.0/23 -all")
-        // The networks. Each answers for its own addresses.
+        // The networks. Each answers for its own addresses, every one of them as Team Cymru does: the small network's
+        // addresses are looked up at the same time as its routes, so none can count on another's answer being kept.
         .Text("5.5.5.5.origin.asn.cymru.com", "64496 | 5.5.5.0/24 | CA | arin | 2020-01-01")
         .Text("6.6.6.6.origin.asn.cymru.com", "64497 | 6.6.6.0/24 | DE | ripencc | 2020-01-01")
         .Text("0.7.7.7.origin.asn.cymru.com", "64498 | 7.7.7.0/24 | FR | ripencc | 2020-01-01")
+        .Text("1.7.7.7.origin.asn.cymru.com", "64498 | 7.7.7.0/24 | FR | ripencc | 2020-01-01")
+        .Text("2.7.7.7.origin.asn.cymru.com", "64498 | 7.7.7.0/24 | FR | ripencc | 2020-01-01")
+        .Text("3.7.7.7.origin.asn.cymru.com", "64498 | 7.7.7.0/24 | FR | ripencc | 2020-01-01")
         .Text("9.9.9.9.origin.asn.cymru.com", "64499 | 9.9.9.0/24 | US | arin | 2020-01-01")
         .Text("0.0.6.5.origin.asn.cymru.com", Asn1)
         .Text("0.1.6.5.origin.asn.cymru.com", Asn2)
