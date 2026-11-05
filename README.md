@@ -122,9 +122,9 @@ latest build:
 
 | File | Needs |
 |---|---|
-| `host-dossier-win-x64-needs-dotnet.exe` | the window, for Windows 10 and 11: the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) |
-| `host-dossier-cli-win-x64-needs-dotnet.exe` | the command line, for Windows: the .NET 10 Runtime |
-| `host-dossier-cli-linux-x64-needs-dotnet` | the command line, for Linux: the .NET 10 Runtime |
+| `host-dossier.exe` | the window, for Windows 10 and 11: the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) |
+| `host-dossier-cli.exe` | the command line, for Windows: the .NET 10 Runtime |
+| `host-dossier-cli` | the command line, for Linux: the .NET 10 Runtime |
 
 On Linux, .NET needs OpenSSL 3. Fedora 45 and later come with OpenSSL 4, which .NET can't use yet: Fedora's own .NET
 (`sudo dnf install dotnet-runtime-10.0`) brings OpenSSL 3 with it, and with any other .NET, install it yourself with
